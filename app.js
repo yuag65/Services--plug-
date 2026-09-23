@@ -133,8 +133,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     let message =
   "🔧 SERVICES PLUG REQUEST\n\n" +
-  "Request ID: " + requestId + "\n" +
-  "Status: NEW\n\n" +
+  "Request ID: " + requestId + "  |  NEW\n\n" +
 
   "SERVICE\n" +
   service + "\n\n" +
@@ -144,17 +143,10 @@ document.addEventListener("DOMContentLoaded", function () {
   (mapLink ? "📍 Google Maps: " + mapLink + "\n\n" : "\n") +
 
   "CUSTOMER\n" +
-  "Name: " + name + "\n" +
-  "Phone: " + phone + "\n\n" +
+  name + "  |  " + phone + "\n\n" +
 
   "PROBLEM\n" +
   problem;
-    saveRequest({
-      id: requestId,
-      service: service,
-      status: "NEW",
-      date: date
-    });
 
     const whatsappURL =
       "https://wa.me/" +
