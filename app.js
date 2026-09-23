@@ -132,19 +132,23 @@ document.addEventListener("DOMContentLoaded", function () {
     const date = new Date().toLocaleDateString();
 
     let message =
-      "SERVICES PLUG REQUEST\\n\\n" +
-      "Request ID: " + requestId + "\\n" +
-      "Status: NEW\\n\\n" +
-      "Service: " + service + "\\n" +
-      "Location: " + location + "\\n" +
-      "Problem: " + problem + "\\n" +
-      "Name: " + name + "\\n" +
-      "Phone: " + phone;
+  "🔧 SERVICES PLUG REQUEST\n\n" +
+  "Request ID: " + requestId + "\n" +
+  "Status: NEW\n\n" +
 
-    if (mapLink) {
-      message += "\\n\\n📍 Open location in Google Maps:\\n" + mapLink;
-    }
+  "SERVICE\n" +
+  service + "\n\n" +
 
+  "LOCATION\n" +
+  location + "\n" +
+  (mapLink ? "📍 Google Maps: " + mapLink + "\n\n" : "\n") +
+
+  "CUSTOMER\n" +
+  "Name: " + name + "\n" +
+  "Phone: " + phone + "\n\n" +
+
+  "PROBLEM\n" +
+  problem;
     saveRequest({
       id: requestId,
       service: service,
