@@ -1,112 +1,115 @@
-// SERVICES PLUG — MANUAL MVP
+document.addEventListener("DOMContentLoaded", function () {
 
-const ADMIN_WHATSAPP = "233537747322";
+  const ADMIN_WHATSAPP = "233537747322";
 
-const form = document.getElementById("requestForm");
-const service = document.getElementById("service");
-const locationInput = document.getElementById("location");
-const gpsBtn = document.getElementById("gpsBtn");
-const toast = document.getElementById("toast");
+  const form = document.getElementById("requestForm");
+  const serviceSelect = document.getElementById("service");
+  const locationInput = document.getElementById("location");
+  const gpsBtn = document.getElementById("gpsBtn");
+  const toast = document.getElementById("toast");
 
-function showToast(message) {
-  if (!toast) {
-    alert(message);
-    return;
+  // SERVICE CARDS
+  document.querySelectorAll(".service-card").forEach(function (card) {
+
+    card.addEventListener("click", function () {
+
+      const service = card.getAttribute("data-service");
+
+      serviceSelect.value = service;
+
+      document.getElementById("request").scrollIntoView({
+        behavior: "smooth"
+      });
+
+    });
+
+  });
+
+
+  // GPS BUTTON
+  if (gpsBtn) {
+
+    gpsBtn.addEventListener("click", function () {
+
+      if (!navigator.geolocation) {
+        locationInput.value = "Location not supported";
+        return;
+      }
+
+      gpsBtn.textContent = "...";
+
+      navigator.geolocation.getCurrentPosition(
+
+        function (position) {
+
+          const lat = position.coords.latitude.toFixed(6);
+          const lng = position.coords.longitude.toFixed(6);
+
+          locationInput.value =
+            "GPS: " + lat + ", " + lng;
+
+          gpsBtn.textContent = "⌖";
+
+        },
+
+        function () {
+
+          gpsBtn.textContent = "⌖";
+
+          alert(
+            "Location access was not allowed. Please type your area or landmark."
+          );
+
+        }
+
+      );
+
+    });
+
   }
 
-  toast.textContent = message;
-  toast.classList.add("show");
 
-  setTimeout(() => {
-    toast.classList.remove("show");
-  }, 2500);
-}
+  // WHATSAPP REQUEST
+  form.addEventListener("submit", function (event) {
 
-document.querySelectorAll(".service-card").forEach(card => {
-  card.addEventListener("click", () => {
-    document.querySelectorAll(".service-card")
-      .forEach(item => item.classList.remove("selected"));
-
-    card.classList.add("selected");
-    service.value = card.dataset.service;
-
-    const requestSection = document.getElementById("request");
-
-    if (requestSection) {
-      requestSection.scrollIntoView({
-        behavior: "smooth",
-        block: "center"
-      });
-    }
-  });
-});
-
-if (gpsBtn) {
-  gpsBtn.addEventListener("click", () => {
-    if (!navigator.geolocation) {
-      showToast("GPS isn't available. Enter your area or landmark.");
-      return;
-    }
-
-    gpsBtn.textContent = "…";
-
-    navigator.geolocation.getCurrentPosition(
-      position => {
-        const latitude = position.coords.latitude.toFixed(6);
-        const longitude = position.coords.longitude.toFixed(6);
-
-        locationInput.value = `GPS: ${latitude}, ${longitude}`;
-        gpsBtn.textContent = "✓";
-
-        showToast("Location added.");
-      },
-      () => {
-        gpsBtn.textContent = "⌖";
-        showToast("Couldn't get GPS. Enter your area or landmark.");
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 10000
-      }
-    );
-  });
-}
-
-if (form) {
-  form.addEventListener("submit", event => {
     event.preventDefault();
 
-    const serviceValue = service.value.trim();
-    const locationValue = locationInput.value.trim();
-    const problemValue = document.getElementById("problem").value.trim();
-    const nameValue = document.getElementById("name").value.trim();
-    const phoneValue = document.getElementById("phone").value.trim();
+    const service = serviceSelect.value;
+    const location = locationInput.value;
+    const problem = document.getElementById("problem").value;
+    const name = document.getElementById("name").value;
+    const phone = document.getElementById("phone").value;
 
-    if (
-      !serviceValue ||
-      !locationValue ||
-      !problemValue ||
-      !nameValue ||
-      !phoneValue
-    ) {
-      showToast("Please complete all fields.");
+
+    if (!service) {
+      alert("Please select a service.");
       return;
     }
 
+    if (!location) {
+      alert("Please enter your location.");
+      return;
+    }
+
+
     const message =
-`*SERVICES PLUG — NEW REQUEST*
+      "SERVICES PLUG REQUEST\n\n" +
+      "Service: " + service + "\n" +
+      "Location: " + location + "\n" +
+      "Problem: " + problem + "\n" +
+      "Name: " + name + "\n" +
+      "Phone: " + phone;
 
-Service: ${serviceValue}
-Customer: ${nameValue}
-Phone: ${phoneValue}
-Location: ${locationValue}
-Problem: ${problemValue}
-
-Status: NEW — please check for an available provider.`;
 
     const whatsappURL =
-      `https://wa.me/${ADMIN_WHATSAPP}?text=${encodeURIComponent(message)}`;
+      "https://wa.me/" +
+      ADMIN_WHATSAPP +
+      "?text=" +
+      encodeURIComponent(message);
 
-    window.open(whatsappURL, "_blank");
+
+    window.location.href = whatsappURL;
+
   });
+
 });
