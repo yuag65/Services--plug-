@@ -360,14 +360,14 @@ function renderHistory(requests) {
         }
       }
 
-      // SAVE REQUEST HISTORY LOCALLY
       saveRequest({
-        id: requestId,
-        service: service,
-        urgency: urgency,
-        status: "NEW",
-        date: date
-      });
+  id: requestId,
+  service: service,
+  urgency: urgency,
+  phone: phone,
+  status: "NEW",
+  date: date
+});
 
       // SHOW STATUS
       if (toast) {
