@@ -1,3 +1,26 @@
+// ===================================
+// SERVICES PLUG LIVE STATUS UPDATES
+// ===================================
+
+supabase
+  .channel("service-requests-live")
+  .on(
+    "postgres_changes",
+    {
+      event: "UPDATE",
+      schema: "public",
+      table: "service_requests"
+    },
+    async (payload) => {
+      console.log("Request status changed:", payload.new);
+
+      // Refresh request history automatically
+      await loadHistory();
+    }
+  )
+  .subscribe((status) => {
+    console.log("Live updates:", status);
+  });
 document.addEventListener("DOMContentLoaded", function () {
   "use strict";
 
