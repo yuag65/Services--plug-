@@ -1,33 +1,11 @@
-// ===================================
-// SERVICES PLUG LIVE STATUS UPDATES
-// ===================================
-
-supabase
-  .channel("service-requests-live")
-  .on(
-    "postgres_changes",
-    {
-      event: "UPDATE",
-      schema: "public",
-      table: "service_requests"
-    },
-    async (payload) => {
-      console.log("Request status changed:", payload.new);
-
-      // Refresh request history automatically
-      await loadHistory();
-    }
-  )
-  .subscribe((status) => {
-    console.log("Live updates:", status);
-  });
 document.addEventListener("DOMContentLoaded", function () {
   "use strict";
 
   const ADMIN_WHATSAPP = "233537747322";
 
   // SUPABASE CONNECTION
-  const SUPABASE_URL = "https://zylsnoybjqmonetjaxbz.supabase.co";
+  const SUPABASE_URL =
+    "https://zylsnoybjqmonetjaxbz.supabase.co";
 
   const SUPABASE_PUBLISHABLE_KEY =
     "sb_publishable_ldvkime9049SXqUOPphDjA_gY9KgqFf";
@@ -66,7 +44,9 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("assistDetails").value.trim();
 
       if (!chosenService) {
-        alert("Please choose the issue that is closest to your situation.");
+        alert(
+          "Please choose the issue that is closest to your situation."
+        );
         return;
       }
 
@@ -102,14 +82,38 @@ document.addEventListener("DOMContentLoaded", function () {
     }
   }
 
-  // CREATE REQUEST ID (random suffix reduces collisions across devices)
+  // CREATE REQUEST ID
   function createRequestId() {
     const now = new Date();
+
     const yy = String(now.getFullYear()).slice(-2);
     const mm = String(now.getMonth() + 1).padStart(2, "0");
     const dd = String(now.getDate()).padStart(2, "0");
-    const suffix = Math.random().toString(36).slice(2, 7).toUpperCase();
-    return "SP-" + yy + mm + dd + "-" + suffix;
+
+    const day = yy + mm + dd;
+    const key = "servicesPlugDailyCount";
+
+    const saved = readJSON(key, {}) || {};
+
+    const count =
+      saved.day === day
+        ? (Number(saved.count) || 0) + 1
+        : 1;
+
+    localStorage.setItem(
+      key,
+      JSON.stringify({
+        day: day,
+        count: count
+      })
+    );
+
+    return (
+      "SP-" +
+      day +
+      "-" +
+      String(count).padStart(3, "0")
+    );
   }
 
   // SAFELY DISPLAY TEXT
@@ -128,100 +132,81 @@ document.addEventListener("DOMContentLoaded", function () {
     );
   }
 
-  // LOAD REQUEST HISTORY
-// LOAD REQUEST HISTORY WITH LIVE STATUS
-async function loadHistory() {
-  if (!historyList) return;
+  // LOAD REQUEST HISTORY AND REFRESH SAVED STATUSES
+  async function loadHistory() {
+    if (!historyList) return;
 
-  const requests = readJSON(HISTORY_KEY, []);
+    let requests = readJSON(HISTORY_KEY, []);
 
-  if (!Array.isArray(requests) || !requests.length) {
-    historyList.innerHTML =
-      '<p class="empty-history">No requests on this device yet.</p>';
-    return;
-  }
+    if (!Array.isArray(requests) || !requests.length) {
+      historyList.innerHTML =
+        '<p class="empty-history">No requests on this device yet.</p>';
+      return;
+    }
 
-  const recentRequests = requests.slice(0, 5);
-
-  // Display saved history immediately
-  renderHistory(recentRequests);
-
-  // Fetch live status for requests with a saved phone number
-  if (!supabaseClient) return;
-
-  const updatedRequests = await Promise.all(
-    recentRequests.map(async function (item) {
-      if (!item.phone || !item.id) return item;
-
-      try {
-        const { data, error } = await supabaseClient.rpc(
-          "lookup_service_request_status",
-          {
-            p_request_code: item.id,
-            p_customer_phone: item.phone
+    // REFRESH STATUSES FROM SUPABASE
+    if (supabaseClient) {
+      requests = await Promise.all(
+        requests.map(async function (item) {
+          if (!item || !item.id || !item.phone) {
+            return item;
           }
-        );
 
-        if (error) throw error;
+          try {
+            const { data, error } =
+              await supabaseClient.rpc(
+                "lookup_service_request_status",
+                {
+                  p_request_code: item.id,
+                  p_customer_phone: item.phone
+                }
+              );
 
-        const row = Array.isArray(data) ? data[0] : data;
+            if (
+              !error &&
+              Array.isArray(data) &&
+              data.length > 0
+            ) {
+              return Object.assign({}, item, {
+                status: data[0].status || item.status
+              });
+            }
+          } catch (error) {
+            console.warn(
+              "Could not refresh history status:",
+              error
+            );
+          }
 
-        if (row && row.status) {
-          return {
-            ...item,
-            status: row.status
-          };
-        }
-      } catch (error) {
-        console.error("History status lookup failed:", error);
-      }
-
-      return item;
-    })
-  );
-
-  // Update saved history with the latest statuses
-  const allRequests = readJSON(HISTORY_KEY, []);
-
-  const updatedMap = new Map(
-    updatedRequests.map(function (item) {
-      return [item.id, item];
-    })
-  );
-
-  const finalRequests = allRequests.map(function (item) {
-    return updatedMap.get(item.id) || item;
-  });
-
-  localStorage.setItem(
-    HISTORY_KEY,
-    JSON.stringify(finalRequests)
-  );
-
-  renderHistory(updatedRequests);
-}
-
-// RENDER REQUEST HISTORY
-function renderHistory(requests) {
-  if (!historyList) return;
-
-  historyList.innerHTML = requests
-    .map(function (item) {
-      return (
-        '<div class="history-item">' +
-        '<div><strong>' +
-        safeText(item.id) +
-        '</strong><small>' +
-        safeText(item.service) +
-        " · " +
-        safeText(item.date) +
-        '</small></div><span class="history-status">' +
-        safeText(item.status || "NEW") +
-        "</span></div>"
+          return item;
+        })
       );
-    })
-    .join("");
-}
+
+      localStorage.setItem(
+        HISTORY_KEY,
+        JSON.stringify(requests)
+      );
+    }
+
+    // DISPLAY HISTORY
+    historyList.innerHTML = requests
+      .slice(0, 5)
+      .map(function (item) {
+        return (
+          '<div class="history-item">' +
+          "<div><strong>" +
+          safeText(item.id) +
+          "</strong><small>" +
+          safeText(item.service) +
+          " · " +
+          safeText(item.date) +
+          "</small></div><span class=\"history-status\">" +
+          safeText(item.status) +
+          "</span></div>"
+        );
+      })
+      .join("");
+  }
 
   // SAVE REQUEST LOCALLY
   function saveRequest(request) {
@@ -239,20 +224,22 @@ function renderHistory(requests) {
   }
 
   // SERVICE SELECTION BUTTONS
-  document.querySelectorAll("[data-service]").forEach(function (button) {
-    button.addEventListener("click", function () {
-      serviceSelect.value =
-        button.getAttribute("data-service") || "";
+  document.querySelectorAll("[data-service]").forEach(
+    function (button) {
+      button.addEventListener("click", function () {
+        serviceSelect.value =
+          button.getAttribute("data-service") || "";
 
-      document.getElementById("request").scrollIntoView({
-        behavior: "smooth"
+        document.getElementById("request").scrollIntoView({
+          behavior: "smooth"
+        });
+
+        window.setTimeout(function () {
+          locationInput.focus({ preventScroll: true });
+        }, 450);
       });
-
-      window.setTimeout(function () {
-        locationInput.focus({ preventScroll: true });
-      }, 450);
-    });
-  });
+    }
+  );
 
   // GPS LOCATION
   if (gpsBtn) {
@@ -279,7 +266,10 @@ function renderHistory(requests) {
             "GPS: " + lat + ", " + lng;
 
           locationInput.dataset.map =
-            "https://www.google.com/maps?q=" + lat + "," + lng;
+            "https://www.google.com/maps?q=" +
+            lat +
+            "," +
+            lng;
 
           gpsBtn.textContent = "✓";
           gpsBtn.disabled = false;
@@ -327,7 +317,13 @@ function renderHistory(requests) {
       const phone =
         document.getElementById("phone").value.trim();
 
-      if (!service || !location || !problem || !name || !phone) {
+      if (
+        !service ||
+        !location ||
+        !problem ||
+        !name ||
+        !phone
+      ) {
         alert("Please complete all the fields.");
         return;
       }
@@ -346,15 +342,28 @@ function renderHistory(requests) {
       // WHATSAPP MESSAGE
       const message =
         "🔧 SERVICES PLUG REQUEST\n\n" +
-        "Request ID: " + requestId + "  |  NEW\n\n" +
-        "SERVICE\n" + service + "\n\n" +
-        "PRIORITY\n" + urgency + "\n\n" +
-        "LOCATION\n" + location + "\n" +
+        "Request ID: " +
+        requestId +
+        "  |  NEW\n\n" +
+        "SERVICE\n" +
+        service +
+        "\n\n" +
+        "PRIORITY\n" +
+        urgency +
+        "\n\n" +
+        "LOCATION\n" +
+        location +
+        "\n" +
         (mapLink
           ? "📍 Google Maps: " + mapLink + "\n\n"
           : "\n") +
-        "CUSTOMER\n" + name + "  |  " + phone + "\n\n" +
-        "PROBLEM\n" + problem;
+        "CUSTOMER\n" +
+        name +
+        "  |  " +
+        phone +
+        "\n\n" +
+        "PROBLEM\n" +
+        problem;
 
       // SAVE TO SUPABASE
       let databaseSaved = false;
@@ -383,14 +392,15 @@ function renderHistory(requests) {
         }
       }
 
+      // SAVE REQUEST HISTORY LOCALLY
       saveRequest({
-  id: requestId,
-  service: service,
-  urgency: urgency,
-  phone: phone,
-  status: "NEW",
-  date: date
-});
+        id: requestId,
+        service: service,
+        urgency: urgency,
+        phone: phone,
+        status: "NEW",
+        date: date
+      });
 
       // SHOW STATUS
       if (toast) {
@@ -414,82 +424,35 @@ function renderHistory(requests) {
     });
   }
 
-
-  // LIVE REQUEST TRACKING UI
-  const historySection = document.getElementById("history");
-  if (historySection && !document.getElementById("liveTrackForm")) {
-    const tracking = document.createElement("section");
-    tracking.className = "history-section sp-live-tracking";
-    tracking.id = "track-request";
-    tracking.innerHTML = `
-      <div class="container sp-track-inner">
-        <div>
-          <p class="eyebrow">LIVE REQUEST STATUS</p>
-          <h2>Track your<br><span>request.</span></h2>
-          <p class="history-copy">Enter the request ID and the phone number used when you submitted it. We only show the status of a matching request.</p>
-        </div>
-        <form id="liveTrackForm" class="sp-track-form">
-          <label for="trackCode">Request ID</label>
-          <input id="trackCode" autocomplete="off" placeholder="e.g. SP-260926-ABCDE" required>
-          <label for="trackPhone">Phone number used for the request</label>
-          <input id="trackPhone" type="tel" autocomplete="tel" placeholder="Your phone number" required>
-          <button class="submit" type="submit"><span>Check request status</span><b>↗</b></button>
-          <p id="trackResult" role="status" aria-live="polite"></p>
-        </form>
-      </div>`;
-    historySection.parentNode.insertBefore(tracking, historySection);
-  }
-
-  const liveTrackForm = document.getElementById("liveTrackForm");
-  if (liveTrackForm) {
-    liveTrackForm.addEventListener("submit", async function (event) {
-      event.preventDefault();
-      const resultBox = document.getElementById("trackResult");
-      const code = document.getElementById("trackCode").value.trim().toUpperCase();
-      const phone = document.getElementById("trackPhone").value.trim();
-      const button = liveTrackForm.querySelector('button[type="submit"]');
-
-      if (!supabaseClient) {
-        resultBox.textContent = "Status lookup is temporarily unavailable. Please contact Services Plug on WhatsApp.";
-        return;
-      }
-
-      button.disabled = true;
-      resultBox.textContent = "Checking your request…";
-      try {
-        const { data, error } = await supabaseClient.rpc("lookup_service_request_status", {
-          p_request_code: code,
-          p_customer_phone: phone
-        });
-        if (error) throw error;
-        const row = Array.isArray(data) ? data[0] : data;
-        if (!row) {
-          resultBox.textContent = "No matching request found. Check the request ID and phone number, or contact us on WhatsApp.";
-        } else {
-          const status = row.status || "New";
-          const labels = {
-            "New": "Request received",
-            "Matched": "A provider is being coordinated / matched",
-            "Accepted": "A provider has accepted",
-            "On the way": "Your provider is on the way",
-            "Arrived": "Your provider has arrived",
-            "Completed": "Request completed",
-            "Cancelled": "Request cancelled"
-          };
-          resultBox.innerHTML = "<strong>" + safeText(row.request_code) + "</strong><br>" +
-            "<span class='sp-track-status'>" + safeText(status) + "</span><br>" +
-            safeText(labels[status] || "Latest status") +
-            (row.service ? "<br><small>" + safeText(row.service) + "</small>" : "");
-        }
-      } catch (err) {
-        console.error("Status lookup failed:", err);
-        resultBox.textContent = "Could not check the status right now. Please try again or contact Services Plug on WhatsApp.";
-      } finally {
-        button.disabled = false;
-      }
-    });
-  }
-
   // INITIALIZE REQUEST HISTORY
   loadHistory();
+
+  // LIVE STATUS UPDATES
+  // Requires service_requests to be enabled in the Supabase Realtime publication.
+  if (supabaseClient) {
+    supabaseClient
+      .channel("services-plug-request-status")
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "service_requests"
+        },
+        async function (payload) {
+          console.log(
+            "Service request updated:",
+            payload.new
+          );
+
+          await loadHistory();
+        }
+      )
+      .subscribe(function (status) {
+        console.log(
+          "Services Plug Realtime status:",
+          status
+        );
+      });
+  }
 });
