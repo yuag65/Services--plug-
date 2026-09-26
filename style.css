@@ -86,3 +86,71 @@
   .feature-strip { margin-top:18px; }
   .feature-item { padding:11px 8px; }
 }
+/* ==================================
+   SERVICES PLUG LIVE REQUEST TRACKING
+   ================================== */
+
+.sp-track-inner {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(24px, 6vw, 80px);
+  align-items: center;
+}
+
+.sp-track-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: clamp(20px, 3vw, 32px);
+  border: 1px solid rgba(120, 160, 145, 0.25);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.sp-track-form label {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.sp-track-form input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px 15px;
+  border: 1px solid rgba(120, 160, 145, 0.35);
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.16);
+  color: inherit;
+  font: inherit;
+}
+
+.sp-track-form input:focus {
+  outline: 2px solid #5fd6a4;
+  outline-offset: 1px;
+}
+
+.sp-track-form button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+#trackResult {
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.sp-track-status {
+  display: inline-block;
+  margin: 8px 0;
+  padding: 5px 12px;
+  border-radius: 999px;
+  background: rgba(95, 214, 164, 0.14);
+  font-weight: 700;
+}
+
+/* Mobile layout */
+
+@media (max-width: 760px) {
+  .sp-track-inner {
+    grid-template-columns: 1fr;
+  }
+}
