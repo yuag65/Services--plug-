@@ -106,35 +106,99 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // LOAD REQUEST HISTORY
-  function loadHistory() {
-    if (!historyList) return;
+// LOAD REQUEST HISTORY WITH LIVE STATUS
+async function loadHistory() {
+  if (!historyList) return;
 
-    const requests = readJSON(HISTORY_KEY, []);
+  const requests = readJSON(HISTORY_KEY, []);
 
-    if (!Array.isArray(requests) || !requests.length) {
-      historyList.innerHTML =
-        '<p class="empty-history">No requests on this device yet.</p>';
-      return;
-    }
-
-    historyList.innerHTML = requests
-      .slice(0, 5)
-      .map(function (item) {
-        return (
-          '<div class="history-item">' +
-          '<div><strong>' +
-          safeText(item.id) +
-          '</strong><small>' +
-          safeText(item.service) +
-          " · " +
-          safeText(item.date) +
-          '</small></div><span class="history-status">' +
-          safeText(item.status) +
-          "</span></div>"
-        );
-      })
-      .join("");
+  if (!Array.isArray(requests) || !requests.length) {
+    historyList.innerHTML =
+      '<p class="empty-history">No requests on this device yet.</p>';
+    return;
   }
+
+  const recentRequests = requests.slice(0, 5);
+
+  // Display saved history immediately
+  renderHistory(recentRequests);
+
+  // Fetch live status for requests with a saved phone number
+  if (!supabaseClient) return;
+
+  const updatedRequests = await Promise.all(
+    recentRequests.map(async function (item) {
+      if (!item.phone || !item.id) return item;
+
+      try {
+        const { data, error } = await supabaseClient.rpc(
+          "lookup_service_request_status",
+          {
+            p_request_code: item.id,
+            p_customer_phone: item.phone
+          }
+        );
+
+        if (error) throw error;
+
+        const row = Array.isArray(data) ? data[0] : data;
+
+        if (row && row.status) {
+          return {
+            ...item,
+            status: row.status
+          };
+        }
+      } catch (error) {
+        console.error("History status lookup failed:", error);
+      }
+
+      return item;
+    })
+  );
+
+  // Update saved history with the latest statuses
+  const allRequests = readJSON(HISTORY_KEY, []);
+
+  const updatedMap = new Map(
+    updatedRequests.map(function (item) {
+      return [item.id, item];
+    })
+  );
+
+  const finalRequests = allRequests.map(function (item) {
+    return updatedMap.get(item.id) || item;
+  });
+
+  localStorage.setItem(
+    HISTORY_KEY,
+    JSON.stringify(finalRequests)
+  );
+
+  renderHistory(updatedRequests);
+}
+
+// RENDER REQUEST HISTORY
+function renderHistory(requests) {
+  if (!historyList) return;
+
+  historyList.innerHTML = requests
+    .map(function (item) {
+      return (
+        '<div class="history-item">' +
+        '<div><strong>' +
+        safeText(item.id) +
+        '</strong><small>' +
+        safeText(item.service) +
+        " · " +
+        safeText(item.date) +
+        '</small></div><span class="history-status">' +
+        safeText(item.status || "NEW") +
+        "</span></div>"
+      );
+    })
+    .join("");
+}
 
   // SAVE REQUEST LOCALLY
   function saveRequest(request) {
