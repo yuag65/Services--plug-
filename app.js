@@ -2,6 +2,20 @@ document.addEventListener("DOMContentLoaded", function () {
   "use strict";
 
   const ADMIN_WHATSAPP = "233537747322";
+
+  // SUPABASE CONNECTION
+  const SUPABASE_URL = "https://zylsnoybjqmonetjaxbz.supabase.co";
+
+  const SUPABASE_PUBLISHABLE_KEY =
+    "sb_publishable_ldvkime9049SXqUOPphDjA_gY9KgqFf";
+
+  const supabaseClient = window.supabase
+    ? window.supabase.createClient(
+        SUPABASE_URL,
+        SUPABASE_PUBLISHABLE_KEY
+      )
+    : null;
+
   const HISTORY_KEY = "servicesPlugRequests";
 
   const form = document.getElementById("requestForm");
@@ -29,13 +43,14 @@ document.addEventListener("DOMContentLoaded", function () {
         document.getElementById("assistDetails").value.trim();
 
       if (!chosenService) {
-        alert("Please choose the issue closest to your situation.");
+        alert("Please choose the issue that is closest to your situation.");
         return;
       }
 
       serviceSelect.value = chosenService;
 
-      const problemField = document.getElementById("problem");
+      const problemField =
+        document.getElementById("problem");
 
       if (details) {
         problemField.value = details;
@@ -84,7 +99,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     localStorage.setItem(
       key,
-      JSON.stringify({ day: day, count: count })
+      JSON.stringify({
+        day: day,
+        count: count
+      })
     );
 
     return "SP-" + day + "-" + String(count).padStart(3, "0");
@@ -123,13 +141,13 @@ document.addEventListener("DOMContentLoaded", function () {
       .map(function (item) {
         return (
           '<div class="history-item">' +
-          "<div><strong>" +
+          '<div><strong>' +
           safeText(item.id) +
-          "</strong><small>" +
+          '</strong><small>' +
           safeText(item.service) +
           " · " +
           safeText(item.date) +
-          "</small></div><span class=\"history-status\">" +
+          '</small></div><span class="history-status">' +
           safeText(item.status) +
           "</span></div>"
         );
@@ -222,7 +240,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   // CUSTOMER REQUEST FORM
   if (form) {
-    form.addEventListener("submit", function (event) {
+    form.addEventListener("submit", async function (event) {
       event.preventDefault();
 
       const service = serviceSelect.value.trim();
@@ -246,22 +264,58 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
       }
 
+      const submitButton =
+        form.querySelector('button[type="submit"]');
+
+      if (submitButton) {
+        submitButton.disabled = true;
+      }
+
       const requestId = createRequestId();
       const mapLink = locationInput.dataset.map || "";
       const date = new Date().toLocaleDateString();
 
+      // WHATSAPP MESSAGE
       const message =
         "🔧 SERVICES PLUG REQUEST\n\n" +
-        "Request ID: " + requestId + " | NEW\n\n" +
+        "Request ID: " + requestId + "  |  NEW\n\n" +
         "SERVICE\n" + service + "\n\n" +
         "PRIORITY\n" + urgency + "\n\n" +
         "LOCATION\n" + location + "\n" +
         (mapLink
           ? "📍 Google Maps: " + mapLink + "\n\n"
           : "\n") +
-        "CUSTOMER\n" + name + " | " + phone + "\n\n" +
+        "CUSTOMER\n" + name + "  |  " + phone + "\n\n" +
         "PROBLEM\n" + problem;
 
+      // SAVE TO SUPABASE
+      let databaseSaved = false;
+
+      if (supabaseClient) {
+        const { error } = await supabaseClient
+          .from("service_requests")
+          .insert({
+            request_code: requestId,
+            customer_name: name,
+            customer_phone: phone,
+            service: service,
+            urgency: urgency,
+            location_text: location,
+            map_url: mapLink || null,
+            problem: problem
+          });
+
+        if (!error) {
+          databaseSaved = true;
+        } else {
+          console.error(
+            "Supabase request insert failed:",
+            error
+          );
+        }
+      }
+
+      // SAVE REQUEST HISTORY LOCALLY
       saveRequest({
         id: requestId,
         service: service,
@@ -270,16 +324,23 @@ document.addEventListener("DOMContentLoaded", function () {
         date: date
       });
 
+      // SHOW STATUS
       if (toast) {
-        toast.textContent =
-          "Opening WhatsApp with your request details…";
+        toast.textContent = databaseSaved
+          ? "Request saved. Opening WhatsApp…"
+          : "Database save failed. Opening WhatsApp so you can still send your request.";
       }
 
+      // OPEN WHATSAPP
       const whatsappURL =
         "https://wa.me/" +
         ADMIN_WHATSAPP +
         "?text=" +
         encodeURIComponent(message);
+
+      if (submitButton) {
+        submitButton.disabled = false;
+      }
 
       window.location.href = whatsappURL;
     });
