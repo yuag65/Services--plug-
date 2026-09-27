@@ -208,3 +208,90 @@ button{cursor:pointer}
  .sp-track-inner{grid-template-columns:1fr}
 }
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}}
+/* =====================================
+   SERVICES PLUG — REQUEST ID & STATUS
+===================================== */
+
+.history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px;
+  margin-bottom: 14px;
+  background: #ffffff;
+  border: 1px solid #e2e8e3;
+  border-radius: 16px;
+  box-shadow: 0 4px 14px rgba(20, 45, 35, 0.04);
+  transition: transform 0.2s ease,
+              box-shadow 0.2s ease;
+}
+
+.history-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(20, 45, 35, 0.08);
+}
+
+/* REQUEST ID */
+
+.history-item strong {
+  display: inline-block;
+  font-size: 16px;
+  font-weight: 700;
+  color: #173c2e;
+  letter-spacing: 0.3px;
+  margin-bottom: 8px;
+  overflow-wrap: anywhere;
+}
+
+/* SERVICE AND DATE */
+
+.history-item small {
+  display: block;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #87918b;
+}
+
+/* STATUS BADGE */
+
+.history-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  padding: 10px 15px;
+  min-width: 85px;
+  border-radius: 10px;
+  background: #e6f1df;
+  color: #476b3b;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* MOBILE DESIGN */
+
+@media (max-width: 480px) {
+  .history-item {
+    padding: 15px;
+    gap: 10px;
+    border-radius: 14px;
+  }
+
+  .history-item strong {
+    font-size: 14px;
+  }
+
+  .history-item small {
+    font-size: 12px;
+  }
+
+  .history-status {
+    min-width: auto;
+    padding: 9px 11px;
+    font-size: 10px;
+    border-radius: 8px;
+  }
+}
